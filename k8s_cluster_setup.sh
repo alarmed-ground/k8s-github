@@ -105,6 +105,7 @@ _source_modules() {
     "${STEPS_DIR}/addon_registry.sh" \
     "${STEPS_DIR}/addon_argocd.sh" \
     "${STEPS_DIR}/addon_loki.sh" \
+    "${STEPS_DIR}/addon_ray.sh" \
     "${STEPS_DIR}/ops_backup.sh" \
     "${STEPS_DIR}/ops_certs.sh" \
     "${STEPS_DIR}/ops_upgrade.sh" \
@@ -180,6 +181,7 @@ main() {
   install_registry
   install_argocd
   install_loki
+  install_ray
   [[ "${INSTALL_HARDEN:-false}" == "true" ]] && harden_cluster
 
   _next_step; verify_cluster
@@ -192,7 +194,7 @@ main() {
   echo ""
   info "Standalone steps: backup restore cert-renew upgrade add-node remove-node"
   info "                  ceph minio ingress metallb cert-manager harden registry"
-  info "                  argocd loki vllm-swap"
+  info "                  argocd loki ray vllm-swap"
 }
 
 # ── CLI dispatch ──────────────────────────────────────────────────────────────
@@ -239,6 +241,7 @@ elif [[ "${1:-}" == "--step" && -n "${2:-}" ]]; then
     registry|docker-registry)                     install_registry ;;
     argocd|argo-cd|gitops)                        install_argocd ;;
     loki|logging|loki-promtail)                   install_loki ;;
+    ray|kuberay|ray-cluster)                       install_ray ;;
     verify|Verify|verification)                   verify_cluster ;;
     uninstall|Uninstall)                          uninstall_cluster ;;
     *)
@@ -246,7 +249,7 @@ elif [[ "${1:-}" == "--step" && -n "${2:-}" ]]; then
       error "Core steps:     ssh prep nvidia k8s-bins init cni workers"
       error "                helm nfs monitoring gpu-op gpu-timeslice dashboard vllm verify"
       error "Standalone ops: backup restore cert-renew upgrade add-node remove-node vllm-swap"
-      error "Add-ons:        ceph minio ingress metallb cert-manager harden registry argocd loki"
+      error "Add-ons:        ceph minio ingress metallb cert-manager harden registry argocd loki ray"
       exit 1 ;;
   esac
 else
