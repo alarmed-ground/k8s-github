@@ -17,7 +17,12 @@ REQUIRED=(
   steps/addon_ceph.sh steps/addon_minio.sh steps/addon_ingress.sh
   steps/addon_metallb.sh steps/addon_cert_manager.sh steps/addon_harden.sh
   steps/addon_registry.sh steps/addon_argocd.sh steps/addon_loki.sh
-  steps/addon_ray.sh
+  steps/addon_ray.sh steps/addon_mig.sh steps/addon_pss.sh
+  steps/addon_dcgm_dashboard.sh steps/addon_alerting_rules.sh
+  steps/preflight_nodes.sh
+  steps/ops_etcd_health.sh steps/ops_os_patch.sh steps/ops_cert_monitor.sh
+  steps/ops_netpol.sh steps/ops_rbac.sh steps/ops_vllm_health.sh
+  steps/ops_benchmark.sh steps/ops_pvc_snapshot.sh
   steps/ops_backup.sh steps/ops_certs.sh steps/ops_upgrade.sh
   steps/ops_nodes.sh steps/ops_vllm_swap.sh steps/uninstall.sh
   # Wizard modules

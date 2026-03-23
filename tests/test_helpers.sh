@@ -147,6 +147,19 @@ bootstrap_installer() {
     "${root}/steps/ops_nodes.sh"
     "${root}/steps/ops_vllm_swap.sh"
     "${root}/steps/uninstall.sh"
+    "${root}/steps/preflight_nodes.sh"
+    "${root}/steps/ops_etcd_health.sh"
+    "${root}/steps/ops_os_patch.sh"
+    "${root}/steps/ops_cert_monitor.sh"
+    "${root}/steps/ops_netpol.sh"
+    "${root}/steps/ops_rbac.sh"
+    "${root}/steps/ops_vllm_health.sh"
+    "${root}/steps/ops_benchmark.sh"
+    "${root}/steps/ops_pvc_snapshot.sh"
+    "${root}/steps/addon_mig.sh"
+    "${root}/steps/addon_pss.sh"
+    "${root}/steps/addon_dcgm_dashboard.sh"
+    "${root}/steps/addon_alerting_rules.sh"
   )
   for _f in "${_mods[@]}"; do
     # shellcheck source=/dev/null

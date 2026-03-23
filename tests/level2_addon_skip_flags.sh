@@ -25,6 +25,10 @@ test_addon_skip "install_registry"     "INSTALL_REGISTRY"
 test_addon_skip "install_argocd"       "INSTALL_ARGOCD"
 test_addon_skip "install_loki"         "INSTALL_LOKI"
 test_addon_skip "install_ray"          "INSTALL_RAY"
+test_addon_skip "configure_mig"        "INSTALL_MIG"
+test_addon_skip "configure_pod_security" "INSTALL_PSS"
+test_addon_skip "install_alerting_rules" "INSTALL_ALERTING_RULES"
+test_addon_skip "install_dcgm_dashboard" "INSTALL_DCGM_DASHBOARD"
 test_addon_skip "harden_cluster"       "INSTALL_HARDEN"
 
 summarise_test

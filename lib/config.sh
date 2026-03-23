@@ -41,6 +41,9 @@ GPU_TIMESLICE_COUNT="${GPU_TIMESLICE_COUNT:-4}"
 # How long to wait for CUDA validation before applying time-slicing (seconds).
 # Toolkit install + CUDA workload typically takes 5-10 min on a fresh node.
 GPU_OP_READY_TIMEOUT="${GPU_OP_READY_TIMEOUT:-900}"
+# Max seconds per command for preflight node checks.
+# Keeps a slow or wedged node from hanging the whole preflight.
+PREFLIGHT_TIMEOUT="${PREFLIGHT_TIMEOUT:-15}"
 
 # ── Feature flags ─────────────────────────────────────────────────────────────
 INSTALL_NVIDIA="${INSTALL_NVIDIA:-true}"
@@ -173,6 +176,9 @@ VLLM_REUSE_PVC="${VLLM_REUSE_PVC:-false}"
 VLLM_PVC_NAME="${VLLM_PVC_NAME:-vllm-model-cache}"
 # Legacy single-model node selector (empty = any GPU node)
 VLLM_NODE_SELECTOR="${VLLM_NODE_SELECTOR:-}"
+# Use the KubeRay cluster as vLLM distributed execution backend.
+# When true, --ray-address is injected into every model engine.
+VLLM_USE_RAY="${VLLM_USE_RAY:-false}"
 
 # ── KubeRay ───────────────────────────────────────────────────────────────────
 INSTALL_RAY="${INSTALL_RAY:-false}"
@@ -190,3 +196,39 @@ RAY_DASHBOARD_NODEPORT="${RAY_DASHBOARD_NODEPORT:-32800}"
 RAY_ENABLE_AUTOSCALING="${RAY_ENABLE_AUTOSCALING:-false}"
 RAY_MIN_WORKERS="${RAY_MIN_WORKERS:-0}"
 RAY_MAX_WORKERS="${RAY_MAX_WORKERS:-4}"
+
+# ── MIG (Multi-Instance GPU) ──────────────────────────────────────────────────
+INSTALL_MIG="${INSTALL_MIG:-false}"
+MIG_STRATEGY="${MIG_STRATEGY:-none}"
+MIG_PROFILE="${MIG_PROFILE:-1g.5gb}"
+
+# ── Pod Security Standards ────────────────────────────────────────────────────
+INSTALL_PSS="${INSTALL_PSS:-false}"
+PSS_LEVEL="${PSS_LEVEL:-baseline}"
+PSS_VERSION="${PSS_VERSION:-latest}"
+
+# ── RBAC kubeconfigs ──────────────────────────────────────────────────────────
+RBAC_OUTPUT_DIR="${RBAC_OUTPUT_DIR:-${SCRIPT_DIR:-$(pwd)}/kubeconfigs}"
+RBAC_DEV_NAMESPACE="${RBAC_DEV_NAMESPACE:-default}"
+
+# ── Alerting rules ────────────────────────────────────────────────────────────
+INSTALL_ALERTING_RULES="${INSTALL_ALERTING_RULES:-true}"
+
+# ── DCGM dashboard ────────────────────────────────────────────────────────────
+INSTALL_DCGM_DASHBOARD="${INSTALL_DCGM_DASHBOARD:-true}"
+
+# ── vLLM health check ─────────────────────────────────────────────────────────
+VLLM_HEALTH_TIMEOUT="${VLLM_HEALTH_TIMEOUT:-600}"
+
+# ── Benchmark ─────────────────────────────────────────────────────────────────
+BENCH_CONCURRENCY="${BENCH_CONCURRENCY:-4}"
+BENCH_REQUESTS="${BENCH_REQUESTS:-20}"
+BENCH_MAX_TOKENS="${BENCH_MAX_TOKENS:-100}"
+
+# ── PVC snapshots ─────────────────────────────────────────────────────────────
+SNAPSHOT_PVC_NAME="${SNAPSHOT_PVC_NAME:-}"
+SNAPSHOT_PVC_NS="${SNAPSHOT_PVC_NS:-default}"
+SNAPSHOT_CLASS="${SNAPSHOT_CLASS:-}"
+RESTORE_SNAPSHOT_NAME="${RESTORE_SNAPSHOT_NAME:-}"
+RESTORE_PVC_NAME="${RESTORE_PVC_NAME:-}"
+RESTORE_PVC_SIZE="${RESTORE_PVC_SIZE:-50Gi}"

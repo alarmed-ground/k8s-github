@@ -312,8 +312,52 @@ collect_vllm() {
       <<< "${VLLM_MODELS[0]}"
   fi
 
+  # ── Ray cluster backend ────────────────────────────────────────────────────
+  # Only ask if both vLLM and Ray are being deployed together.
+  VLLM_USE_RAY="false"
+  if [[ "${INSTALL_RAY:-false}" == "true" ]]; then
+    echo ""
+    echo -e "  ${BOLD}${BLUE}  Ray Cluster Integration${NC}"
+    echo -e "  ${DIM}  A Ray cluster is configured in this installation.${NC}"
+    echo -e "  ${DIM}  vLLM can use Ray as its distributed execution backend instead of${NC}"
+    echo -e "  ${DIM}  managing its own worker processes. This enables:${NC}"
+    echo -e "  ${DIM}    • Tensor parallelism across Ray workers (multi-node GPU)${NC}"
+    echo -e "  ${DIM}    • Shared GPU memory pool across vLLM and other Ray workloads${NC}"
+    echo -e "  ${DIM}    • Ray Serve for additional routing and scaling capabilities${NC}"
+    echo -e "  ${DIM}    • Unified observability in the Ray dashboard${NC}"
+    echo ""
+    echo -e "  ${DIM}  Without Ray: each vLLM engine pod manages its own GPU workers${NC}"
+    echo -e "  ${DIM}  (simpler, sufficient for single-node or isolated deployments).${NC}"
+    echo ""
+
+    prompt_yes_no VLLM_USE_RAY "Deploy vLLM on the Ray cluster backend?" "n"
+
+    if [[ "$VLLM_USE_RAY" == "true" ]]; then
+      echo ""
+      hint "vLLM will connect to: ray://ray-cluster-head-svc.${NS_RAY:-ray}.svc.cluster.local:10001"
+      hint "--ray-address will be injected automatically into every model engine."
+      echo ""
+
+      # Warn if Ray workers have no GPU but vLLM needs GPUs
+      local _total_model_gpus=0
+      for _ms in "${VLLM_MODELS[@]}"; do
+        IFS='|' read -r _ _mg _ <<< "$_ms"
+        _total_model_gpus=$(( _total_model_gpus + ${_mg:-1} ))
+      done
+      if [[ "${RAY_WORKER_GPU:-0}" == "0" ]] && (( _total_model_gpus > 0 )); then
+        warn_msg "⚠  Ray workers are configured with 0 GPUs (RAY_WORKER_GPU=0)."
+        warn_msg "   vLLM needs ${_total_model_gpus} GPU(s) — ensure Ray workers have GPU access"
+        warn_msg "   or go back and update the Ray GPU allocation."
+      fi
+
+      ok "vLLM will use Ray cluster at ray-cluster-head-svc.${NS_RAY:-ray}:10001"
+    else
+      ok "vLLM will use standalone mode (no Ray backend)."
+    fi
+  fi
+
   echo ""
-  ok "vLLM: ${#VLLM_MODELS[@]} model(s) configured, namespace ${VLLM_NAMESPACE}, NodePort ${VLLM_NODEPORT}"
+  ok "vLLM: ${#VLLM_MODELS[@]} model(s) configured, namespace ${VLLM_NAMESPACE}, NodePort ${VLLM_NODEPORT}${VLLM_USE_RAY:+, Ray backend enabled}"
   show_progress
 }
 

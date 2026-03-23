@@ -172,6 +172,7 @@ VLLM_REUSE_PVC="${VLLM_REUSE_PVC:-}"
 VLLM_PVC_NAME="${VLLM_PVC_NAME:-}"
 VLLM_QUANTIZATION="${VLLM_QUANTIZATION:-}"
 VLLM_NODE_SELECTOR="${VLLM_NODE_SELECTOR:-}"
+VLLM_USE_RAY="${VLLM_USE_RAY:-}"
 CONFEOF
 
   # Append VLLM_MODELS array (bash arrays cannot go inside a heredoc)
@@ -210,6 +211,8 @@ patch_installer() {
       -v nv_fm="${NVIDIA_FABRIC_MANAGER:-}" \
       -v nv_rt="${NVIDIA_REBOOT_TIMEOUT:-}" \
       -v nv_tkver="${NVIDIA_TOOLKIT_VERSION:-}" \
+      -v vllm_nodesel="${VLLM_NODE_SELECTOR:-}" \
+      -v vllm_useray="${VLLM_USE_RAY:-}" \
       -v hv="${HELM_VERSION:-}" \
       -v ns_mon="${NS_MONITORING:-}" \
       -v ns_gpu="${NS_GPU_OPERATOR:-}" \
@@ -380,6 +383,8 @@ patch_installer() {
    in_conf && /^RAY_MIN_WORKERS=/        { print "RAY_MIN_WORKERS=\"" ray_min "\"" ; next }
    in_conf && /^RAY_MAX_WORKERS=/        { print "RAY_MAX_WORKERS=\"" ray_max "\"" ; next }
    in_conf && /^VLLM_QUANTIZATION=/        { print "VLLM_QUANTIZATION=\"" vllm_quant "\""; next }
+   in_conf && /^VLLM_NODE_SELECTOR=/  { print "VLLM_NODE_SELECTOR=\"" vllm_nodesel "\"" ; next }
+   in_conf && /^VLLM_USE_RAY=/        { print "VLLM_USE_RAY=\"" vllm_useray "\"" ; next }
    in_conf && /^BACKUP_DIR=/               { print "BACKUP_DIR=\"" bkp_dir "\""; next }
    in_conf && /^BACKUP_S3_BUCKET=/         { print "BACKUP_S3_BUCKET=\"" bkp_s3 "\""; next }
    in_conf && /^BACKUP_KEEP=/              { print "BACKUP_KEEP=\"" bkp_keep "\""; next }

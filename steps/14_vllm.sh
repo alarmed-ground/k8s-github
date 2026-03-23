@@ -218,6 +218,57 @@ install_vllm() {
 
   kubectl create namespace "$VLLM_NAMESPACE" --dry-run=client -o yaml | kubectl apply -f -
 
+  # ── Ray cluster backend ───────────────────────────────────────────────────
+  # When VLLM_USE_RAY=true each engine pod connects to the Ray cluster as its
+  # distributed execution backend.  We verify the head service exists, then
+  # inject --ray-address into every model's extraArgs and set RAY_ADDRESS as
+  # an environment variable on the servingEngineSpec pods.
+  local ray_address="" ray_env_block=""
+  if [[ "${VLLM_USE_RAY:-false}" == "true" ]]; then
+    local ray_ns="${NS_RAY:-ray}"
+    local ray_head_svc="ray-cluster-head-svc"
+    local ray_host="ray-cluster-head-svc.${ray_ns}.svc.cluster.local"
+
+    # Verify the Ray head service exists
+    if kubectl get svc "$ray_head_svc" -n "$ray_ns" &>/dev/null 2>&1; then
+      ray_address="ray://${ray_host}:10001"
+      log "Ray backend enabled — vLLM engines will connect to: ${ray_address}"
+    else
+      warn "VLLM_USE_RAY=true but Ray head service '${ray_head_svc}' not found in namespace '${ray_ns}'."
+      warn "Ensure the Ray cluster is deployed first (--step ray) or disable VLLM_USE_RAY."
+      warn "Continuing without Ray backend — vLLM will use standalone mode."
+      ray_address=""
+    fi
+
+    if [[ -n "$ray_address" ]]; then
+      # Inject --ray-address into each model spec's extra_args
+      local -a ray_model_specs=()
+      for spec in "${model_specs[@]}"; do
+        _parse_model_spec "$spec"
+        # Append --ray-address to extra args if not already present
+        if [[ "${_ms_extra}" != *"--ray-address"* ]]; then
+          _ms_extra="${_ms_extra:+${_ms_extra} }--ray-address ${ray_address}"
+        fi
+        # Rebuild spec with updated extra args (field 9)
+        local new_spec="${_ms_model_id}|${_ms_gpu_count}|${_ms_dtype}|${_ms_max_len}"
+        new_spec+="|${_ms_cpu_req}|${_ms_cpu_lim}|${_ms_mem_req}|${_ms_mem_lim}"
+        new_spec+="|${_ms_extra}|${_ms_storage}|${_ms_reuse}|${_ms_pvc}"
+        new_spec+="|${_ms_quant}|${_ms_hf_token}|${_ms_node_selector}"
+        ray_model_specs+=("$new_spec")
+      done
+      model_specs=("${ray_model_specs[@]}")
+
+      # Build RAY_ADDRESS env block for servingEngineSpec
+      ray_env_block="
+  env:
+    - name: RAY_ADDRESS
+      value: "${ray_address}"
+    - name: RAY_DISABLE_IMPORT_WARNING
+      value: "1""
+      info "Injected --ray-address into ${#model_specs[@]} model spec(s)."
+    fi
+  fi
+
   # ── Validate GPU capacity ─────────────────────────────────────────────────
   local total_gpus_needed=0
   for spec in "${model_specs[@]}"; do
@@ -309,7 +360,7 @@ servingEngineSpec:
   # Without this, every Service in the namespace gets injected as env vars
   # starting with VLLM_STACK_*, which vLLM's envs.py warns about as unknown
   # VLLM_ variables. The pods still use DNS for service discovery.
-  enableServiceLinks: false
+  enableServiceLinks: false${ray_env_block}
 
   startupProbe:
     initialDelaySeconds: ${max_init_delay}

@@ -106,6 +106,19 @@ _source_modules() {
     "${STEPS_DIR}/addon_argocd.sh" \
     "${STEPS_DIR}/addon_loki.sh" \
     "${STEPS_DIR}/addon_ray.sh" \
+    "${STEPS_DIR}/addon_mig.sh" \
+    "${STEPS_DIR}/addon_pss.sh" \
+    "${STEPS_DIR}/addon_dcgm_dashboard.sh" \
+    "${STEPS_DIR}/addon_alerting_rules.sh" \
+    "${STEPS_DIR}/preflight_nodes.sh" \
+    "${STEPS_DIR}/ops_etcd_health.sh" \
+    "${STEPS_DIR}/ops_os_patch.sh" \
+    "${STEPS_DIR}/ops_cert_monitor.sh" \
+    "${STEPS_DIR}/ops_netpol.sh" \
+    "${STEPS_DIR}/ops_rbac.sh" \
+    "${STEPS_DIR}/ops_vllm_health.sh" \
+    "${STEPS_DIR}/ops_benchmark.sh" \
+    "${STEPS_DIR}/ops_pvc_snapshot.sh" \
     "${STEPS_DIR}/ops_backup.sh" \
     "${STEPS_DIR}/ops_certs.sh" \
     "${STEPS_DIR}/ops_upgrade.sh" \
@@ -140,6 +153,7 @@ main() {
   check_root
   check_lock
   validate_config
+  run_preflight_nodes
 
   _step=0
   _step_total=15
@@ -167,6 +181,8 @@ main() {
   _next_step; install_helm
   _next_step; install_nfs_provisioner
   _next_step; install_monitoring
+  install_alerting_rules
+  install_dcgm_dashboard
   _next_step; install_gpu_operator
   _next_step; configure_gpu_timeslicing
   _next_step; install_dashboard
@@ -182,7 +198,11 @@ main() {
   install_argocd
   install_loki
   install_ray
+  configure_mig
+  configure_pod_security
+  install_cert_monitor
   [[ "${INSTALL_HARDEN:-false}" == "true" ]] && harden_cluster
+  generate_rbac_kubeconfigs
 
   _next_step; verify_cluster
 
@@ -200,6 +220,14 @@ main() {
 # ── CLI dispatch ──────────────────────────────────────────────────────────────
 # Skip entirely when sourced for testing (K8S_SOURCE_ONLY=true)
 [[ "${K8S_SOURCE_ONLY:-}" == "true" ]] && return 0 2>/dev/null || true
+
+# ── --validate: dry-run config check + SSH reachability ─────────────────────
+if [[ "${1:-}" == "--validate" ]]; then
+  check_root; validate_config
+  run_preflight_nodes
+  log "Validation passed — cluster is reachable and config is valid."
+  exit 0
+fi
 
 if [[ "${1:-}" == "--backup" && -n "${2:-}" ]]; then
   export RESTORE_SNAPSHOT="$2"; shift 2
@@ -242,6 +270,20 @@ elif [[ "${1:-}" == "--step" && -n "${2:-}" ]]; then
     argocd|argo-cd|gitops)                        install_argocd ;;
     loki|logging|loki-promtail)                   install_loki ;;
     ray|kuberay|ray-cluster)                       install_ray ;;
+    mig|nvidia-mig)                                 configure_mig ;;
+    pss|pod-security)                               configure_pod_security ;;
+    preflight|pre-flight)                           run_preflight_nodes ;;
+    etcd-health|etcd)                               check_etcd_health ;;
+    os-patch|rolling-patch)                         patch_os_rolling ;;
+    cert-monitor)                                   install_cert_monitor ;;
+    netpol|network-policy)                          apply_network_policies ;;
+    rbac|kubeconfigs)                               generate_rbac_kubeconfigs ;;
+    vllm-health|vllm-check)                         check_vllm_health ;;
+    benchmark|bench)                                benchmark_vllm ;;
+    pvc-snapshot|snapshot)                          snapshot_pvc ;;
+    pvc-restore|restore-pvc)                        restore_pvc_from_snapshot ;;
+    alerting-rules|alerts)                          install_alerting_rules ;;
+    dcgm-dashboard|dcgm)                            install_dcgm_dashboard ;;
     verify|Verify|verification)                   verify_cluster ;;
     uninstall|Uninstall)                          uninstall_cluster ;;
     *)
@@ -249,7 +291,8 @@ elif [[ "${1:-}" == "--step" && -n "${2:-}" ]]; then
       error "Core steps:     ssh prep nvidia k8s-bins init cni workers"
       error "                helm nfs monitoring gpu-op gpu-timeslice dashboard vllm verify"
       error "Standalone ops: backup restore cert-renew upgrade add-node remove-node vllm-swap"
-      error "Add-ons:        ceph minio ingress metallb cert-manager harden registry argocd loki ray"
+      error "Add-ons:        ceph minio ingress metallb cert-manager harden registry argocd loki ray mig pss dcgm alerts cert-monitor"
+      error "Ops/day-2:      preflight os-patch etcd-health netpol rbac pvc-snapshot pvc-restore vllm-health benchmark"
       exit 1 ;;
   esac
 else

@@ -98,6 +98,9 @@ print_summary() {
     [[ -n "${VLLM_EXTRA_ARGS:-}" ]] && echo -e "    Extra args   : ${DIM}${VLLM_EXTRA_ARGS}${NC}"
   else
     echo -e "  vLLM Stack     : $(echo -e "${vllm_status}")"
+  if [[ "${INSTALL_VLLM:-false}" == "true" && "${VLLM_USE_RAY:-false}" == "true" ]]; then
+    echo -e "  vLLM Backend   : ${CYAN}Ray cluster${NC} (ray://${NS_RAY:-ray} cluster)"
+  fi
   fi
   echo ""
   echo -e "  ${BOLD}${BLUE}── Add-on Components ─────────────────────────────────────${NC}"
